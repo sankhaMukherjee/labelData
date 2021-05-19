@@ -28,7 +28,7 @@ dataSelect.on_change( 'value', updatePatientCallback )
 
 def increaseCallback():
     
-    selects = iP.getSelects( entirePage.children[1].children[1].children )
+    selects = iP.getSelects( entirePage.children[1].children[0].children )
     print(selects)
 
     createInnerPlot.toAddText(selects)

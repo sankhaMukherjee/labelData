@@ -2,12 +2,13 @@ import logging
 from utils import dataIO as dIO
 
 import numpy as np
+import os
 
 from bokeh.plotting import figure
 from bokeh.layouts import column, row
 
 from bokeh.models import Div
-from bokeh.models import Toggle, Select, Button
+from bokeh.models import Toggle, Select, Button, MultiChoice
 
 from bokeh.models import ColumnDataSource, CustomJS
 from bokeh.models.widgets import DataTable, TableColumn, CheckboxEditor
@@ -17,6 +18,13 @@ from bokeh.models.widgets import DataTable, TableColumn, CheckboxEditor
 # it to a more complex logger depending upon what you
 # want.
 logger = logging.getLogger()
+
+config = {
+    'select-width'   : 20,
+    'textData-width' : 1000,
+    'label-width'    : 300,
+    'total-width'    : 1400
+}
 
 def getSelects( rowVals ):
 
@@ -38,23 +46,18 @@ class CreaterInnerPlot:
             'suicidal - ideation with intent'
         ]
 
+        self.currentFile = None
         self.rowVals = []
         self.userFeedback  = Div(text='initialized properly')
-        self.addButton = Button(label='add Sentence')
-        self.listOfStrings = [f'string value = {i}' for i in range(10)]
+        self.listOfStrings = [f'some string i = {i}' for i in range(10)]
         self.generateRows(self.listOfStrings)
 
-        self.addButton.on_click( self.toAddText )
-        self.finalResult = column([ self.addButton, column(self.rowVals), self.userFeedback])
+        self.finalResult = column([ column(self.rowVals), self.userFeedback])
 
         return 
 
-    def toAddText(self, forUpdates=None):
+    def toAddText(self, forUpdates):
 
-        if forUpdates is None:
-            forUpdates = [self.rowVals[i].children[0].active for i, s in enumerate(self.listOfStrings)]
-
-        print(forUpdates)
         newStrings = []
         for u, s in zip(forUpdates, self.listOfStrings):
             newStrings.append(s)
@@ -63,7 +66,7 @@ class CreaterInnerPlot:
         
         self.listOfStrings = newStrings
         self.generateRows( self.listOfStrings )
-        self.finalResult = column([ self.addButton, column(self.rowVals), self.userFeedback])
+        self.finalResult = column([ column(self.rowVals), self.userFeedback])
 
         return
     
@@ -76,11 +79,12 @@ class CreaterInnerPlot:
 
     def createRowVal(self, text):
 
-        select      = Toggle( label='select', width=60, height=20 )
-        textData    = Div( text=text, width=100, height=20  )
-        value       = Select( title = '', value = self.getLabel(text), options=self.labels  )
+        select      = Toggle( label='', width=config['select-width'], height=20 )
+        textData    = Div( text=text,   width=config['textData-width'], height=20  )
+        value       = MultiChoice(value=[self.getLabel(text)], options=self.labels, width=config['label-width'])
+        # value       = Select( title = '', value = self.getLabel(text), options=self.labels, width=config['label-width']  )
     
-        result = row([select, textData, value], width=600)
+        result = row([select, value, textData], width=config['total-width'])
 
         self.rowVals.append( result )
 
@@ -94,9 +98,27 @@ class CreaterInnerPlot:
 
         return
 
+    def createFinalResult(self, listOfStrings):
+
+        self.listOfStrings = listOfStrings
+        self.generateRows( self.listOfStrings )
+        self.finalResult = column([ column(self.rowVals), self.userFeedback])
+
+        return
+
     def __call__(self, folder, newFile):
 
         try:
+            
+            if self.currentFile != os.path.join(folder, newFile):
+                self.currentFile = os.path.join(folder, newFile)
+                listOfStrings = []
+                with open(self.currentFile) as f:
+                    listOfStrings = [f'{i:4d}|{l}' for i, l in enumerate(f)]
+                    self.createFinalResult(listOfStrings)
+            else:
+                self.createFinalResult(self.listOfStrings)
+
             return self.finalResult
 
         except Exception as e:
